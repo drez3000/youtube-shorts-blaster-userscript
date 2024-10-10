@@ -8,7 +8,7 @@
 // @match        *://*.youtube.com/*
 // @exclude      *://accounts.youtube.com/*
 // @grant        none
-// @version      0.1.0
+// @version      0.1.1
 // @updateURL    https://raw.githubusercontent.com/drez3000/youtube-shorts-blaster-userscript/main/src/userscript.user.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/youtube-shorts-blaster-userscript/main/src/userscript.user.js
 // ==/UserScript==
@@ -17,8 +17,8 @@
 	'use strict'
 
 	const MAX_TRIGGERS = 2
-	const ATTEMPTS = 8
-	const MAX_CHECK_DELAY_MS = 200
+	const ATTEMPTS = 32
+	const MAX_CHECK_DELAY_MS = 400
 
 	function oncePageLoaded(callback) {
 		if (document.readyState !== 'loading') {
