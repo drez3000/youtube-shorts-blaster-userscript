@@ -1,0 +1,26 @@
+{
+  "name": "youtube-shorts-blaster-userscript",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A userscript to automatically detect and remove any YouTube page element containing shorts outside of the \"/shorts\" page itself.",
+  "main": "src/userscript.user.js",
+  "scripts": {
+    "test": "bun test --timeout 60000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drez3000/youtube-shorts-blaster-userscript.git"
+  },
+  "keywords": [
+    "gdpr"
+  ],
+  "author": "drez3000@protonmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/drez3000/youtube-shorts-blaster-userscript/issues"
+  },
+  "homepage": "https://github.com/drez3000/youtube-shorts-blaster-userscript#readme",
+  "devDependencies": {
+    "@biomejs/biome": "1.9.3"
+  }
+}
