@@ -8,29 +8,34 @@
 // @match        *://*.youtube.com/*
 // @exclude      *://accounts.youtube.com/*
 // @grant        none
-// @version      0.1.1
+// @version      0.2.0
 // @updateURL    https://raw.githubusercontent.com/drez3000/youtube-shorts-blaster-userscript/main/src/userscript.user.js
 // @downloadURL  https://raw.githubusercontent.com/drez3000/youtube-shorts-blaster-userscript/main/src/userscript.user.js
 // ==/UserScript==
 
-; (() => {
+;(() => {
 	'use strict'
 
-	const MAX_TRIGGERS = 2
-	const ATTEMPTS = 32
-	const MAX_CHECK_DELAY_MS = 400
+	const MAX_DOM_LOOKUP_DEPTH = 22
+	const MAX_CHECK_FREQUENCY_MS = 350
 
 	function oncePageLoaded(callback) {
-		if (document.readyState !== 'loading') {
-			// Document is already ready, call the callback immediately
-			callback()
-		} else {
-			// Document is not ready yet, wait for the DOMContentLoaded event
-			document.addEventListener('DOMContentLoaded', callback)
-		}
+		return new Promise((res) => {
+			const resolve = () => res(callback())
+			if (document.readyState !== 'loading') {
+				// Document is already ready, call the callback immediately
+				resolve()
+			} else {
+				// Document is not ready yet, wait for the DOMContentLoaded event
+				document.addEventListener('DOMContentLoaded', resolve)
+			}
+		})
 	}
 
-	function flatNodesOf(node, { minDepth = 0, maxDepth = Number.POSITIVE_INFINITY, includeShadowRoot = true } = {}) {
+	function flatNodesOf(
+		node,
+		{ minDepth = 0, maxDepth = Number.POSITIVE_INFINITY, includeShadowRoot = true } = {},
+	) {
 		const nodes = []
 		const stack = [{ node, depth: 0 }]
 		while (stack.length > 0) {
@@ -58,60 +63,57 @@
 
 	function isShortsElement(node) {
 		const tagName = node?.tagName || ''
-		const headers = [...node.querySelectorAll(`h1,h2,h3,h4,h5,h6`)]
+		const headers = [...node.querySelectorAll('h1,h2,h3,h4,h5,h6')]
 		return (
-			tagName.match(/reel/i)
-			|| (node?.attributes && node.attributes['is-shorts'] != undefined)
-			|| (headers.length === 1 && headers.at(0).innerText.match(/^shorts$/i))
+			tagName.match(/reel/i) ||
+			(node?.attributes && node.attributes['is-shorts'] !== undefined) ||
+			(headers.length === 1 && headers.at(0).innerText.match(/^shorts$/i))
+		)
+	}
+
+	function selectYoutubeShortsThumbnails() {
+		return [...document.querySelectorAll('#contents > ytd-video-renderer')].filter(
+			(node) =>
+				[...node.querySelectorAll('a')].filter((a) => a?.href?.match('/shorts')).length > 0,
+		)
+	}
+
+	function selectYoutubeShortsSections() {
+		return flatNodesOf(document, { maxDepth: MAX_DOM_LOOKUP_DEPTH }).filter(
+			(node) =>
+				typeof node?.querySelectorAll === 'function' &&
+				node?.attributes !== undefined &&
+				!isMain(node) &&
+				isShortsElement(node),
 		)
 	}
 
 	function removeYoutubeShorts() {
-		return flatNodesOf(document)
-			.filter((node) => (
-				typeof node?.querySelectorAll === 'function'
-				&& node?.attributes != undefined
-				&& !isMain(node)
-				&& isShortsElement(node)
-			))
-			.map((node) => {
-				node.remove && node.remove()
+		return [...selectYoutubeShortsThumbnails(), ...selectYoutubeShortsSections()].map(
+			(node) => {
+				node?.remove && node.remove()
 				return node
-			})
+			},
+		)
 	}
 
-	function enqueue(a = 0, triggered = 0) {
+	function check() {
 		if (
-			document.location.href.match(/youtube\..*\/shorts/i)
-			|| document.location.href.match(/youtube\..*\/history/i)
-			|| document.location.href.match(/youtube\..*\/playlist/i)
-			|| document.location.href.match(/youtube\..*\/account/i)
+			document.location.href.match(/youtube\..*\/shorts/i) ||
+			document.location.href.match(/youtube\..*\/history/i) ||
+			document.location.href.match(/youtube\..*\/playlist/i) ||
+			document.location.href.match(/youtube\..*\/account/i)
 		) {
 			return
 		}
-		const ms = Math.max(0, Math.min(10 ** (a - 1), MAX_CHECK_DELAY_MS))
-		setTimeout(() => {
-			const matches = removeYoutubeShorts()
-			if (matches.length) {
-				console.info(`[YOUTUBE SHORTS BLASTER] Removed ${matches.length} elements:`, matches)
-			}
-			triggered += matches.length
-			if (triggered < MAX_TRIGGERS && a < ATTEMPTS) {
-				enqueue(a + 1, triggered)
-			}
-		}, ms)
+		const removed = removeYoutubeShorts()
+		if (removed.length) {
+			console.info(`[YOUTUBE SHORTS BLASTER] Removed ${removed.length} elements:`, removed)
+		}
 	}
 
 	function main() {
-		let loc = document?.location?.href
-		setInterval(() => {
-			const _loc = document?.location?.href
-			if (_loc != loc) {
-				loc = _loc
-				enqueue()
-			}
-		}, 100)
-		oncePageLoaded(enqueue)
+		oncePageLoaded(check).then(() => setInterval(check, MAX_CHECK_FREQUENCY_MS))
 	}
 
 	main()
